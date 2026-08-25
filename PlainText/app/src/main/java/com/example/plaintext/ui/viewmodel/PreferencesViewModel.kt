@@ -5,39 +5,35 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.createSavedStateHandle
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 data class PreferencesState(
-    var login: String,
-    var password: String,
-    var preencher: Boolean
+    val login: String = "devtitans",
+    val password: String = "123",
+    val preencher: Boolean = true
 )
 
 @HiltViewModel
 class PreferencesViewModel @Inject constructor(
     handle: SavedStateHandle,
 ) : ViewModel() {
-    var preferencesState by mutableStateOf(PreferencesState(login = "devtitans", password = "123", preencher = true))
+    var state by mutableStateOf(PreferencesState())
         private set
 
     fun updateLogin(login: String) {
-
+        state = state.copy(login = login)
     }
 
     fun updatePassword(password: String) {
-
+        state = state.copy(password = password)
     }
 
     fun updatePreencher(preencher: Boolean) {
-
+        state = state.copy(preencher = preencher)
     }
 
-    fun checkCredentials(login: String, password: String): Boolean{
-        return login == preferencesState.login && password == preferencesState.password
+    fun checkCredentials(login: String, password: String): Boolean {
+        return login == state.login && password == state.password
     }
 }

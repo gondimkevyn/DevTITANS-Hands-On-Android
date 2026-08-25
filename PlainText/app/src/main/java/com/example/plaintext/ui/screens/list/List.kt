@@ -1,14 +1,9 @@
 package com.example.plaintext.ui.screens.list
 
-import android.content.res.Configuration
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,7 +16,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -32,21 +26,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.plaintext.R
+import com.example.plaintext.data.model.PasswordInfo
 import com.example.plaintext.ui.screens.login.TopBarComponent
 import com.example.plaintext.ui.viewmodel.ListViewModel
 import com.example.plaintext.ui.viewmodel.ListViewState
-import androidx.compose.foundation.overscroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.plaintext.data.model.PasswordInfo
 
 @Composable
 fun ListView(
-) {}
+    viewModel: ListViewModel = hiltViewModel(),
+    navigateToEdit: (password: PasswordInfo) -> Unit,
+    navigateToAdd: () -> Unit
+) {
+    val listState = viewModel.listViewState
+
+    Scaffold(
+        topBar = { TopBarComponent(title = "Minhas Senhas") },
+        floatingActionButton = { AddButton(onClick = navigateToAdd) }
+    ) { padding ->
+        ListItemContent(
+            modifier = Modifier.padding(padding),
+            listState = listState,
+            navigateToEdit = navigateToEdit
+        )
+    }
+}
 
 @Composable
 fun AddButton(onClick: () -> Unit) {
@@ -59,42 +64,53 @@ fun AddButton(onClick: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ListItemContent(
     modifier: Modifier,
     listState: ListViewState,
     navigateToEdit: (password: PasswordInfo) -> Unit
 ) {
-        when {
-            !listState.isCollected -> {
-                LoadingScreen()
-            }
-
-            else -> {
-                LazyColumn(
-                    modifier = modifier
-                        .fillMaxSize()
-                ) {
-                    items(listState.passwordList.size) {
-                        ListItem(
-                            listState.passwordList[it],
-                            navigateToEdit
-                        )
-                    }
+    when {
+        !listState.isCollected -> {
+            LoadingScreen(modifier)
+        }
+        listState.passwordList.isEmpty() -> {
+            EmptyScreen(modifier)
+        }
+        else -> {
+            LazyColumn(
+                modifier = modifier.fillMaxSize()
+            ) {
+                items(listState.passwordList.size) { index ->
+                    ListItem(
+                        listState.passwordList[index],
+                        navigateToEdit
+                    )
                 }
             }
         }
+    }
 }
 
 @Composable
-fun LoadingScreen() {
+fun LoadingScreen(modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        Text("Carregando")
+        Text("Carregando...")
+    }
+}
+
+@Composable
+fun EmptyScreen(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.fillMaxSize(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text("Nenhuma senha cadastrada.")
     }
 }
 
@@ -129,8 +145,7 @@ fun ListItem(
         }
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Menu",
-            tint = Color.White
+            tint = Color.Gray
         )
     }
 }
-

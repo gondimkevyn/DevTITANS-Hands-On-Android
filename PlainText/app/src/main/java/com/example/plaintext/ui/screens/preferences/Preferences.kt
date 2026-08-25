@@ -1,45 +1,50 @@
 package com.example.plaintext.ui.screens.preferences
 
-
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
 import com.example.plaintext.ui.screens.login.TopBarComponent
 import com.example.plaintext.ui.screens.util.PreferenceInput
 import com.example.plaintext.ui.screens.util.PreferenceItem
 import com.example.plaintext.ui.viewmodel.PreferencesState
 import com.example.plaintext.ui.viewmodel.PreferencesViewModel
-import kotlinx.coroutines.delay
 
 @Composable
-fun SettingsScreen(navController: NavHostController?,
-                   viewModel: PreferencesViewModel = hiltViewModel()
+fun SettingsScreen(
+    onBackClick: () -> Unit,
+    viewModel: PreferencesViewModel = hiltViewModel()
 ){
+    val state = viewModel.state
+
     Scaffold(
         topBar = {
-            TopBarComponent()
+            TopBarComponent(title = "Configurações")
         }
     ){ padding ->
-        SettingsContent(modifier = Modifier.padding(padding), viewModel)
+        SettingsContent(
+            modifier = Modifier.padding(padding),
+            state = state,
+            onLoginChange = { viewModel.updateLogin(it) },
+            onPasswordChange = { viewModel.updatePassword(it) },
+            onPreencherChange = { viewModel.updatePreencher(it) }
+        )
     }
 }
 
 @Composable
-fun SettingsContent(modifier: Modifier = Modifier, viewModel: PreferencesViewModel) {
+fun SettingsContent(
+    modifier: Modifier = Modifier,
+    state: PreferencesState,
+    onLoginChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onPreencherChange: (Boolean) -> Unit
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -49,32 +54,32 @@ fun SettingsContent(modifier: Modifier = Modifier, viewModel: PreferencesViewMod
         PreferenceInput(
             title = "Preencher Login",
             label = "Login",
-            fieldValue = "",
+            fieldValue = state.login,
             summary = "Preencher login na tela inicial"
         ){
-            // função para alterar o login
+            onLoginChange(it)
         }
 
         PreferenceInput(
             title = "Setar Senha",
-            label = "Label",
-            fieldValue = "",
+            label = "Senha",
+            fieldValue = state.password,
             summary = "Senha para entrar no sistema"
         ){
-            // função para alterar a senha
+            onPasswordChange(it)
         }
 
         PreferenceItem(
-            title = "Preencher Login",
-            summary = "Preencher login na tela inicial",
+            title = "Habilitar Preenchimento",
+            summary = "Ativar preenchimento automático",
             onClick = {
-                // deve alterar o estado que representa se o switch está ligado ou não
+                onPreencherChange(!state.preencher)
             },
             control = {
                 Switch(
-                    checked = false, // deve ler o estado que representa se o switch está ligado ou não
+                    checked = state.preencher,
                     onCheckedChange = {
-                        // deve alterar o estado que representa se o switch está ligado ou não
+                        onPreencherChange(it)
                     }
                 )
             }
@@ -85,5 +90,10 @@ fun SettingsContent(modifier: Modifier = Modifier, viewModel: PreferencesViewMod
 @Preview(showBackground = true)
 @Composable
 fun SettingsScreenPreview() {
-    SettingsScreen(null)
+    SettingsContent(
+        state = PreferencesState(),
+        onLoginChange = {},
+        onPasswordChange = {},
+        onPreencherChange = {}
+    )
 }
