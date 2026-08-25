@@ -169,7 +169,7 @@ fun Login_screen_content(
                 onClick = { navigateToList() },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Entrar")
+                Text("Enviar")
             }
         }
     }

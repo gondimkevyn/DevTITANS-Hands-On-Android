@@ -82,6 +82,86 @@ Diferente de um código gerado aleatoriamente, projetamos este ViewModel para at
 
 ---
 
+## 3.2 - Preferencias Navegação
+**Descrição:** Implementação da infraestrutura de navegação para a tela de configurações, integrando-a ao fluxo global do aplicativo através do AppState e NavHost.
+
+### Requisitos Atendidos:
+*   [x] Inclusão da entrada `Screen.Preferences` no `NavHost`.
+*   [x] Adição do objeto de destino `Preferences` na classe selada `Screen`.
+*   [x] Implementação da função de conveniência `navigateToPreferences()` no `JetcasterAppState`.
+
+### O que foi feito:
+1.  **Definição de Rota (`PlainTextAppState.kt`):** O objeto `Preferences` foi formalizado dentro da `sealed class Screen`, permitindo que o sistema de navegação Type-Safe do Jetpack Compose o reconheça como um destino válido.
+2.  **Encapsulamento de Navegação (`PlainTextAppState.kt`):** Criada a função `navigateToPreferences()` dentro da classe de gerenciamento de estado (`JetcasterAppState`). Isso isola a lógica de como a navegação é feita, evitando que as telas precisem acessar o `navController` diretamente.
+3.  **Configuração do NavHost (`PlainTextApp.kt`):** Adicionado o bloco `composable<Screen.Preferences>` no `NavHost`, vinculando a rota à tela `SettingsScreen`. Além disso, a tela de Login foi atualizada para usar a nova função de navegação do `appState`.
+
+### Melhorias Implementadas:
+*   **Padronização:** Agora todas as telas seguem o mesmo padrão de navegação delegada ao `appState`.
+*   **Manutenibilidade:** Se precisarmos mudar a forma como as configurações são abertas (ex: abrir em uma nova janela ou diálogo), só precisamos alterar um único lugar no `appState`.
+
+### Racional de Desenvolvimento (O que pensamos):
+Seguimos o princípio de **Responsabilidade Única**. Em vez de deixar a tela de Login "saber" demais sobre o controlador de navegação, ela apenas solicita ao `appState` para ir para as configurações. Isso torna o código mais limpo e profissional. A escolha por navegação Type-Safe (usando objetos em vez de Strings) elimina o risco de erros de digitação nas rotas, um problema comum em aplicativos Android mais antigos.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+*(Nota: Desenvolvimento focado em padrões modernos de navegação do Jetpack Compose para garantir uma experiência de usuário fluida e livre de crashes).*
+
+---
+
+## 3.3 - Preferencias Composable
+**Descrição:** Finalização da interface de configurações com a integração completa das chamadas ao ViewModel para manipulação de dados de login, senha e ativação do preenchimento automático.
+
+### Requisitos Atendidos:
+*   [x] Integração das chamadas ao ViewModel para alteração do Login.
+*   [x] Integração das chamadas ao ViewModel para alteração da Senha.
+*   [x] Implementação da lógica do Switch "Preencher" vinculada ao estado do ViewModel.
+
+### O que foi feito:
+1.  **Vínculo de Eventos (`Preferences.kt`):** A função `SettingsScreen` foi configurada para repassar os eventos de UI (`onLoginChange`, `onPasswordChange`, `onPreencherChange`) diretamente para as funções correspondentes no `PreferencesViewModel`.
+2.  **Sincronização de Estado:** O componente `PreferenceInput` agora exibe o valor atual (`fieldValue`) vindo do `PreferencesState` e dispara a atualização no ViewModel a cada entrada do usuário.
+3.  **Controle do Switch:** O componente `Switch` foi vinculado bidirecionalmente: ele reflete o estado `preencher` do ViewModel e, ao ser acionado, dispara a função `updatePreencher` para persistir a mudança na memória do App.
+
+### Melhorias Implementadas:
+*   **Reatividade:** A tela responde instantaneamente às mudanças de estado, proporcionando uma experiência de uso fluida.
+*   **Segurança de Tipos:** O uso de lambdas (`(String) -> Unit`) garante que a interface apenas envie os dados necessários, sem expor a complexidade interna do ViewModel.
+
+### Racional de Desenvolvimento (O que pensamos):
+A implementação focou em transformar os componentes de UI em elementos puramente reativos. Ao conectar o `Switch` e os `Inputs` ao ViewModel, garantimos que a interface seja sempre um reflexo fiel dos dados subjacentes. A escolha de usar callbacks específicos para cada campo simplifica o rastreamento de mudanças e facilita futuras expansões. 
+
+**Resumo da Mudança Técnica:**
+Transformamos componentes visuais estáticos em componentes reativos. O fluxo de dados agora segue o padrão: **Interface -> Evento -> ViewModel -> Novo Estado -> Interface Atualizada**. Isso garante que qualquer alteração nas configurações seja capturada e processada imediatamente pela lógica do App.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+*(Nota: A conclusão desta etapa marca a funcionalidade total da tela de preferências, unindo o design visual à lógica de negócio).*
+
+---
+
+## 4 - Autenticação
+**Descrição:** Implementação da lógica de validação de acesso, garantindo que apenas usuários autorizados acessassem a lista de senhas.
+
+### Detalhes Técnicos da Implementação:
+
+*   **Função de Validação (ViewModel):**
+    *   **Localização:** Linhas 35-37 de `LoginViewModel.kt`.
+    *   **Implementação:** Criada a função `validateInDatabase(login, pass)` que atua como uma interface entre a UI e o Repositório de dados. Ela utiliza chamadas suspensas para garantir que a verificação no banco de dados não impacte a performance do aplicativo.
+*   **Feedback de Erro (Toast):**
+    *   **Localização:** Linhas 84-88 de `Login.kt`.
+    *   **Implementação:** Implementada a lógica de erro que, ao falhar em ambas as validações (Admin e DB), recupera o contexto da aplicação via `LocalContext.current` e dispara um `Toast.makeText` informando "Login ou Senha incorretos!".
+*   **Navegação Protegida:**
+    *   **Localização:** Linhas 71 e 80 de `Login.kt`.
+    *   **Implementação:** A função `navigateToList()` foi encapsulada dentro dos blocos de sucesso das verificações. Isso impede que acessos não autorizados naveguem para a tela de listagem de senhas.
+
+### Requisitos Atendidos:
+*   [x] Verificação de credenciais no momento do clique no botão "Enviar".
+*   [x] Exibição de mensagem informativa em caso de falha.
+*   [x] Bloqueio de navegação para usuários não autenticados.
+
+### Racional de Desenvolvimento (O que pensamos):
+A implementação foi desenhada para ser robusta: o sistema de "duas chaves" (Admin + DB) permite flexibilidade sem comprometer a segurança. Optamos por centralizar a decisão de navegação na função `navigateToList` apenas após a confirmação positiva dos ViewModels, seguindo o padrão de segurança *Auth-First*. O uso de Toasts garante um feedback rápido e limpo para o usuário.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+---
+
 ## 🏆 FEITO EXTRA: Sistema de Autenticação Dual (Admin + DB)
 **Descrição:** Implementação de um sistema de login dinâmico que permite a entrada tanto via credenciais de administrador (Configurações) quanto via registros de usuários armazenados no banco de dados local (Room).
 
