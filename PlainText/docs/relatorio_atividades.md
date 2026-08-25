@@ -56,7 +56,7 @@ A decisão de migrar o estado local para um ViewModel não foi uma mera automaç
 
 ---
 
-## 2.3 - Preferences ViewModel
+## 3.1 - Preferences ViewModel
 **Descrição:** Implementação e complementação do ViewModel para a tela de configurações (Preferences), permitindo a persistência temporária e alteração de credenciais do sistema.
 
 ### Requisitos Atendidos:
@@ -95,4 +95,4 @@ Diferente de um código gerado aleatoriamente, projetamos este ViewModel para at
 *   **Experiência do Usuário:** Maior flexibilidade no acesso, transformando a lista de senhas em um repositório ativo de credenciais de login.
 
 ---
-*Este documento será atualizado conforme o progresso das próximas atividades.**Este documento será atualizado conforme o progresso das próximas atividades.*
+*Este documento será atualizado conforme o progresso das próximas atividades.*
