@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.plaintext.data.model.PasswordInfo
+import com.example.plaintext.data.model.toEntity
 import com.example.plaintext.data.model.toInfo
 import com.example.plaintext.data.repository.PasswordDBStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,6 +39,12 @@ open class ListViewModel @Inject constructor (
     fun savePassword(password: PasswordInfo) {
         viewModelScope.launch {
             passwordDBStore.save(password)
+        }
+    }
+
+    fun deletePassword(password: PasswordInfo) {
+        viewModelScope.launch {
+            passwordDBStore.delete(password.toEntity())
         }
     }
 }

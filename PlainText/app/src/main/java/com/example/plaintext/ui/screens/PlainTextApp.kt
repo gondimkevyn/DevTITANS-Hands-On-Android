@@ -40,10 +40,10 @@ fun PlainTextApp(
         composable<Screen.List> {
             ListView(
                 navigateToEdit = { password ->
-                    appState.navController.navigate(Screen.EditList(password))
+                    appState.navigateToEditList(password)
                 },
                 navigateToAdd = {
-                    appState.navController.navigate(Screen.EditList(PasswordInfo(0, "", "", "", "")))
+                    appState.navigateToEditList(PasswordInfo(0, "", "", "", ""))
                 }
             )
         }

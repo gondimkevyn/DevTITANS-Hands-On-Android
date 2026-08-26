@@ -174,5 +174,194 @@ A implementação foi desenhada para ser robusta: o sistema de "duas chaves" (Ad
 *   **Escalabilidade:** O aplicativo deixa de ser um gerenciador estático e passa a permitir que novos "usuários" (cadastrados na lista) também acessem o sistema.
 *   **Experiência do Usuário:** Maior flexibilidade no acesso, transformando a lista de senhas em um repositório ativo de credenciais de login.
 
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
 ---
-*Este documento será atualizado conforme o progresso das próximas atividades.*
+
+## 5 - List Composable
+**Descrição:** Desenvolvimento da tela de listagem de senhas, utilizando componentes otimizados para exibição de grandes volumes de dados e interação dinâmica.
+
+### Detalhes Técnicos da Implementação:
+
+*   **Estrutura da Tela (Scaffold):**
+    *   **Localização:** Função `ListView` em `List.kt`.
+    *   **Implementação:** Utilizado o `Scaffold` para organizar a `TopBarComponent` e o `floatingActionButton`. O `AddButton` foi passado para o slot de ação flutuante para facilitar a adição de novas credenciais.
+*   **Lista Eficiente (LazyColumn):**
+    *   **Localização:** Função `ListItemContent` em `List.kt`.
+    *   **Implementação:** Implementado o `LazyColumn` para renderizar apenas os itens visíveis na tela, garantindo alta performance mesmo com centenas de senhas salvas.
+*   **Componente de Item (ListItem):**
+    *   **Localização:** Função `ListItem` em `List.kt`.
+    *   **Implementação:** Cada senha é exibida em uma `Row` contendo um ícone (Logo), título (Nome do Serviço) e subtítulo (Login), além de um ícone indicador de clique que navega para a tela de edição.
+*   **Interface de Pré-visualização (@Preview):**
+    *   **Localização:** Função `ListViewPreview` em `List.kt`.
+    *   **Implementação:** Criado um preview que utiliza dados mockados ("Twitter", "Facebook", "Moodle") para validar o layout visual e o espaçamento sem necessidade de execução no emulador.
+
+### Requisitos Atendidos:
+*   [x] Uso de `Scaffold` para estrutura base.
+*   [x] Exibição de dados via `LazyColumn`.
+*   [x] Integração do `AddButton` como FAB (Floating Action Button).
+*   [x] Implementação do `ListItem` para cada registro.
+
+### Racional de Desenvolvimento (O que pensamos):
+Optamos pelo `LazyColumn` em vez de uma `Column` simples com scroll para garantir que o aplicativo não sofra com lentidão à medida que o banco de dados de senhas cresce. A separação do `ListItemContent` como um componente à parte permite que lidemos facilmente com estados de "Carregando" ou "Lista Vazia", melhorando significativamente a UX (User Experience). O design segue o padrão de guias visuais do Android (Material 3), com ícones de navegação claros à direita de cada item.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+---
+
+## 6 - Banco de dados das Senhas
+**Descrição:** Implementação da camada de persistência local utilizando Room Database e integração com Injeção de Dependências (Hilt).
+
+### Requisitos Atendidos:
+*   [x] Definição da tabela "passwords" com os campos: `id`, `name`, `login`, `password` e `notes` (opcional).
+*   [x] Implementação do `PasswordDao` com operações de CRUD e consultas customizadas.
+*   [x] Criação do repositório `PasswordDBStore` e sua implementação local.
+*   [x] Configuração da injeção de dependência no `DataDiModule`.
+
+### O que foi feito:
+1.  **Entidade Room (`Password.kt`):** Criada a classe de dados anotada com `@Entity` representando a tabela no SQLite. O campo `notes` foi definido como anulável (`String? = null`) conforme os requisitos.
+2.  **DAO (`PasswordDao.kt`):** Implementadas funções para inserir, atualizar, deletar e buscar todas as senhas. Adicionada uma query específica para autenticação de usuários salvos.
+3.  **Abstração de Dados (`PasswordStore.kt`):** Criada uma interface para desacoplar a lógica de acesso a dados da UI, permitindo facilidade em futuros testes unitários.
+4.  **Injeção de Dependência (`DataDiModule.kt`):** Configurado o Hilt para prover a instância única do Banco de Dados e dos DAOs necessários para o funcionamento do App.
+
+### Melhorias Implementadas:
+*   **Persistência Robusta:** Os dados agora são salvos permanentemente no dispositivo, não sendo perdidos ao fechar o aplicativo.
+*   **Performance:** Consultas que retornam `Flow` permitem que a UI seja atualizada automaticamente sempre que o banco de dados sofrer alterações.
+
+### Racional de Desenvolvimento (O que pensamos):
+A escolha do Room foi estratégica para garantir a integridade dos dados através de verificações em tempo de compilação. Optamos por usar o padrão **Repository Pattern** (`PasswordDBStore`) para que o restante do aplicativo não precise saber detalhes técnicos do SQLite.
+
+**Correção Crítica (Estabilidade):**
+Durante os testes, identificamos um crash (`IllegalStateException`) causado pela alteração do esquema na Atividade 6. Para mitigar isso, atualizamos a versão do banco para `2` em `PlainTextDatabase.kt` e implementamos a política de `fallbackToDestructiveMigration` no `DataDiModule.kt`. Essa decisão técnica garante que, em ambiente de desenvolvimento, o App recrie o banco automaticamente em caso de conflitos estruturais, priorizando a fluidez do ciclo de vida do software.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+---
+
+## 6.1 - List ViewModel
+**Descrição:** Implementação da camada de lógica para a listagem de senhas, realizando a ponte entre o banco de dados e a interface do usuário.
+
+### Detalhes Técnicos da Implementação:
+
+*   **Injeção do Repositório:**
+    *   **Localização:** Construtor da classe `ListViewModel` em `ListViewModel.kt`.
+    *   **Implementação:** Adicionado o `PasswordDBStore` como parâmetro injetado via `@Inject`. Isso permite que o ViewModel acesse os dados do banco sem conhecer os detalhes internos do Room.
+*   **Coleta de Dados Reativa:**
+    *   **Localização:** Bloco `init` de `ListViewModel.kt`.
+    *   **Implementação:** Utilizado o `viewModelScope.launch` para iniciar uma Coroutine que coleta o `Flow` de senhas vindo do banco. Cada vez que uma senha é adicionada ou editada no banco, o `listViewState` é atualizado automaticamente.
+*   **Mapeamento de Dados (DTO):**
+    *   **Localização:** `ListViewModel.kt`.
+    *   **Implementação:** Utilizada a função de extensão `.map { it.toInfo() }` para converter as entidades do banco (`Password`) em objetos de visualização (`PasswordInfo`), mantendo a separação de camadas.
+
+### Requisitos Atendidos:
+*   [x] PasswordDBStore adicionado como parâmetro no construtor.
+*   [x] Chamada ao método `getList()` para obtenção dos dados.
+*   [x] Atribuição dos resultados ao estado local `listViewState`.
+
+### Racional de Desenvolvimento (O que pensamos):
+Implementamos a coleta de dados usando `Flow` no `init` para garantir que a lista esteja sempre sincronizada com o banco de dados sem que o usuário precise fazer "pull-to-refresh". A escolha de atualizar o booleano `isCollected = true` apenas após o primeiro retorno do banco permite que a UI exiba um estado de carregamento profissional, melhorando a percepção de performance do aplicativo.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+---
+
+## 6.2 - List Navegação
+**Descrição:** Implementação da infraestrutura de navegação para a tela de listagem de senhas, permitindo a transição fluida a partir da tela de Login.
+
+### Detalhes Técnicos da Implementação:
+
+*   **Definição de Rota (AppState):**
+    *   **Localização:** Linha 28 de `PlainTextAppState.kt`.
+    *   **Implementação:** Adicionado o objeto `List` dentro da `sealed class Screen`. O uso de objetos serializáveis garante que a navegação seja Type-Safe e reconhecida em tempo de compilação.
+*   **Função de Navegação:**
+    *   **Localização:** Linhas 76-78 de `PlainTextAppState.kt`.
+    *   **Implementação:** Criada a função `navigateToList()`, que encapsula a chamada ao `navController`. Isso permite que qualquer parte do app solicite a navegação para a lista de forma padronizada.
+*   **Configuração do NavHost:**
+    *   **Localização:** Linha 37 de `PlainTextApp.kt`.
+    *   **Implementação:** Inserida a entrada `composable<Screen.List>` no `NavHost`, vinculando a rota ao Composable `ListView`. A tela de Login foi atualizada para disparar `appState.navigateToList()` após a validação bem-sucedida das credenciais.
+
+### Requisitos Atendidos:
+*   [x] Entrada correspondente para a tela `List` adicionada no `NavHost`.
+*   [x] Objeto de destino `List` adicionado na estrutura `Screen`.
+*   [x] Função `navigateToList()` implementada no `AppState`.
+
+### Racional de Desenvolvimento (O que pensamos):
+Centralizar a navegação da lista no `JetcasterAppState` segue o padrão de design adotado no projeto de referência (JetCaster), facilitando a manutenção. Ao separar a definição da rota da implementação visual, garantimos que a lógica de fluxo do aplicativo seja independente do design das telas, facilitando futuras alterações na hierarquia de navegação (como a adição de uma barra de navegação inferior).
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+---
+
+## 7 - EditList Composable
+**Descrição:** Implementação da tela de edição e criação de senhas, seguindo os padrões visuais de banner informativo e entradas de texto personalizadas.
+
+### Detalhes Técnicos da Implementação:
+
+*   **Estrutura de Layout (Scaffold e Column):**
+    *   **Localização:** Função `EditList` em `EditList.kt`.
+    *   **Implementação:** Utilizado o `Scaffold` para integrar a `TopBarComponent` (com título fixo "PlainText") e uma `Column` interna para organizar o conteúdo. Foi adicionado um `Box` com fundo verde (`0xFF98C13F`) para atuar como banner de contexto, exibindo dinamicamente se a ação é de "Adicionar" ou "Editar".
+*   **Componente de Entrada (EditInput):**
+    *   **Localização:** Função `EditInput` em `EditList.kt`.
+    *   **Implementação:** Encapsulamento do `OutlinedTextField` em uma `Row` para padronizar as margens e o estilo visual dos campos de Nome, Usuário, Senha e Notas.
+*   **Gestão de Estado Local:**
+    *   **Localização:** Início da função `EditList`.
+    *   **Implementação:** Utilizado `rememberSaveable { mutableStateOf(...) }` para manter os dados dos campos de texto durante mudanças de configuração, inicializados com os valores recebidos via navegação.
+*   **Ação de Persistência:**
+    *   **Localização:** Botão "Salvar" em `EditList.kt`.
+    *   **Implementação:** O botão foi estilizado com formato arredondado e cor laranja (`0xFFF4A460`), acionando a lambda `savePassword` que converte os estados da UI de volta para o objeto `PasswordInfo`.
+
+### Requisitos Atendidos:
+*   [x] Uso de `Scaffold` para estrutura base.
+*   [x] Utilização do componente customizado `EditInput` para campos de texto.
+*   [x] Layout estruturado com `Column` e `Row` para alinhamento.
+*   [x] Implementação de Preview funcional para validação de design.
+
+### Racional de Desenvolvimento (O que pensamos):
+Priorizamos a fidelidade visual às referências fornecidas, implementando o banner verde para dar clareza imediata ao usuário sobre sua ação atual. A escolha de usar `rememberSaveable` para o estado interno da tela de edição garante que o usuário não perca o que digitou caso o teclado mude de orientação. O botão "Salvar" foi posicionado ao final da tela usando `Modifier.weight(1f)` e um `Spacer`, garantindo que ele sempre se destaque como a ação principal da tela.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+---
+
+## 7.1 - EditList Navegação
+**Descrição:** Implementação da infraestrutura de navegação para a tela de edição e criação de senhas, garantindo a passagem correta de argumentos e a integridade do fluxo de dados.
+
+### Detalhes Técnicos da Implementação:
+
+*   **Destino com Argumentos (AppState):**
+    *   **Localização:** Linhas 30-32 de `PlainTextAppState.kt`.
+    *   **Implementação:** O destino `EditList` foi definido como uma `data class` que recebe um objeto `PasswordInfo`. Isso permite que a tela de destino saiba exatamente qual senha deve ser editada ou se deve iniciar um formulário vazio.
+*   **Função de Navegação Especializada:**
+    *   **Localização:** Linhas 80-82 de `PlainTextAppState.kt`.
+    *   **Implementação:** Criada a função `navigateToEditList(password: PasswordInfo)`, centralizando a lógica de transição e garantindo que o objeto de senha seja passado corretamente para o `navController`.
+*   **Integração no NavHost:**
+    *   **Localização:** Linha 57 de `PlainTextApp.kt`.
+    *   **Implementação:** Configurado o mapeamento de tipos personalizados (`parcelableType`) no `NavHost` para permitir a transferência de objetos `Parcelable` entre telas, garantindo a segurança de tipos (Type-Safety) introduzida no Navigation 2.8.
+*   **Fluxo de Origem (List para Edit):**
+    *   **Localização:** Bloco `composable<Screen.List>` em `PlainTextApp.kt`.
+    *   **Implementação:**
+        *   **Botão +**: Chama `navigateToEditList` passando um objeto `PasswordInfo` vazio (ID 0).
+        *   **Item da Lista**: Chama `navigateToEditList` passando o objeto da senha selecionada para edição.
+
+### Requisitos Atendidos:
+*   [x] Entrada `EditList` adicionada no `NavHost`.
+*   [x] Objeto de destino `EditList` incluído na estrutura `Screen`.
+*   [x] Função `navigateToEditList` implementada no `AppState`.
+*   [x] Botão "+" inicia fluxo de "Adicionar nova senha".
+*   [x] Clique no item inicia fluxo de "Editar Senha".
+
+### Racional de Desenvolvimento (O que pensamos):
+A decisão de usar objetos `Parcelable` para a navegação foi tomada para evitar múltiplas consultas ao banco de dados durante a transição de telas. Ao passar o objeto completo da lista para a edição, a interface ganha agilidade e reduz o consumo de recursos. O encapsulamento no `JetcasterAppState` mantém a tela de lista focada apenas em exibir dados, delegando a responsabilidade de "como chegar na próxima tela" para a camada de gerenciamento de estado global.
+
+**Integrantes responsáveis:** Kevyn e Equipe de Desenvolvimento.
+
+---
+*Este documento reflete a conclusão do ciclo de desenvolvimento do módulo PlainText.*

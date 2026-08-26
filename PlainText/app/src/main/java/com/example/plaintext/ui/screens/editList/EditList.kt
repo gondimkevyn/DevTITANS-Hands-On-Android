@@ -1,6 +1,8 @@
 package com.example.plaintext.ui.screens.editList
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,7 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -21,8 +26,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.plaintext.data.model.PasswordInfo
 import com.example.plaintext.ui.screens.Screen
 import com.example.plaintext.ui.screens.login.TopBarComponent
@@ -37,42 +45,69 @@ fun EditList(
     val nomeState = rememberSaveable { mutableStateOf(password.name) }
     val usuarioState = rememberSaveable { mutableStateOf(password.login) }
     val senhaState = rememberSaveable { mutableStateOf(password.password) }
-    val notasState = rememberSaveable { mutableStateOf(password.notes) }
+    val notasState = rememberSaveable { mutableStateOf(password.notes ?: "") }
 
     Scaffold(
-        topBar = { TopBarComponent(title = if (password.id == 0) "Adicionar Senha" else "Editar Senha") }
+        topBar = { TopBarComponent(title = "PlainText") }
     ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
         ) {
-            EditInput("Nome", nomeState)
-            EditInput("Usuário/Login", usuarioState)
-            EditInput("Senha", senhaState)
-            EditInput("Notas", notasState, textInputHeight = 120)
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Button(
-                onClick = {
-                    savePassword(
-                        PasswordInfo(
-                            id = password.id,
-                            name = nomeState.value,
-                            login = usuarioState.value,
-                            password = senhaState.value,
-                            notes = notasState.value
-                        )
-                    )
-                    navigateBack()
-                },
-                modifier = Modifier.fillMaxWidth()
+            // Banner Verde
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF98C13F)) // Cor verde aproximada da imagem
+                    .padding(16.dp)
             ) {
-                Text("Salvar")
+                Text(
+                    text = if (password.id == 0) "Adicionar nova senha" else "Editar senha",
+                    fontSize = 20.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                EditInput("Nome", nomeState)
+                EditInput("Usuário", usuarioState)
+                EditInput("Senha", senhaState)
+                EditInput("Notas", notasState, textInputHeight = 150)
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Button(
+                    onClick = {
+                        savePassword(
+                            PasswordInfo(
+                                id = password.id,
+                                name = nomeState.value,
+                                login = usuarioState.value,
+                                password = senhaState.value,
+                                notes = notasState.value.ifEmpty { null }
+                            )
+                        )
+                        navigateBack()
+                    },
+                    modifier = Modifier
+                        .padding(bottom = 32.dp)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF4A460) // Cor laranja aproximada
+                    )
+                ) {
+                    Text("Salvar", color = Color.White, fontSize = 18.sp)
+                }
             }
         }
     }

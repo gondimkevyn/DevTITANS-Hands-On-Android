@@ -27,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,8 +59,16 @@ fun Login_screen(
     preferencesViewModel: PreferencesViewModel = hiltViewModel()
 ) {
     val loginState = loginViewModel.state
+    val preferencesState = preferencesViewModel.state
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // Efeito para preenchimento automático
+    LaunchedEffect(preferencesState.preencher) {
+        if (preferencesState.preencher && loginState.login.isEmpty()) {
+            loginViewModel.onLoginChanged(preferencesState.login)
+        }
+    }
 
     Login_screen_content(
         state = loginState,
@@ -68,15 +77,15 @@ fun Login_screen(
         onRememberMeChange = { loginViewModel.onRememberMeChanged(it) },
         navigateToSettings = navigateToSettings,
         navigateToList = {
-            val isAdminValid = preferencesViewModel.checkCredentials(
-                loginState.login,
-                loginState.password
-            )
-            
-            if (isAdminValid) {
-                navigateToList()
-            } else {
-                scope.launch {
+            scope.launch {
+                val isAdminValid = preferencesViewModel.checkCredentials(
+                    loginState.login,
+                    loginState.password
+                )
+                
+                if (isAdminValid) {
+                    navigateToList()
+                } else {
                     val isUserValid = loginViewModel.validateInDatabase(
                         loginState.login,
                         loginState.password

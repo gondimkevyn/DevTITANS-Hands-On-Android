@@ -14,6 +14,7 @@ interface PasswordDBStore {
     suspend fun save(passwordInfo: PasswordInfo)
     fun isEmpty(): Flow<Boolean>
     suspend fun checkCredentials(login: String, password: String): Boolean
+    suspend fun delete(password: Password)
 }
 
 class LocalPasswordDBStore(
@@ -50,5 +51,9 @@ class LocalPasswordDBStore(
 
     override suspend fun checkCredentials(login: String, password: String): Boolean {
         return passwordDao.checkCredentials(login, password) != null
+    }
+
+    override suspend fun delete(password: Password) {
+        passwordDao.delete(password)
     }
 }
