@@ -1,32 +1,33 @@
 package com.example.plaintext.ui.screens.editList
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,42 +35,96 @@ import com.example.plaintext.data.model.PasswordInfo
 import com.example.plaintext.ui.screens.Screen
 import com.example.plaintext.ui.screens.login.TopBarComponent
 
-data class EditListState(
-    val nomeState: MutableState<String>,
-    val usuarioState: MutableState<String>,
-    val senhaState: MutableState<String>,
-    val notasState: MutableState<String>,
-)
-
-fun isPasswordEmpty(password: PasswordInfo): Boolean {
-    return password.name.isEmpty() && password.login.isEmpty() && password.password.isEmpty() && password.notes.isEmpty()
-}
-
 @Composable
 fun EditList(
     args: Screen.EditList,
     navigateBack: () -> Unit,
     savePassword: (password: PasswordInfo) -> Unit
 ) {
+    val password = args.password
+    val nomeState = rememberSaveable { mutableStateOf(password.name) }
+    val usuarioState = rememberSaveable { mutableStateOf(password.login) }
+    val senhaState = rememberSaveable { mutableStateOf(password.password) }
+    val notasState = rememberSaveable { mutableStateOf(password.notes ?: "") }
 
+    Scaffold(
+        topBar = { TopBarComponent(title = "PlainText") }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            // Banner Verde
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF98C13F)) // Cor verde aproximada da imagem
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = if (password.id == 0) "Adicionar nova senha" else "Editar senha",
+                    fontSize = 20.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                EditInput("Nome", nomeState)
+                EditInput("Usuário", usuarioState)
+                EditInput("Senha", senhaState)
+                EditInput("Notas", notasState, textInputHeight = 150)
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Button(
+                    onClick = {
+                        savePassword(
+                            PasswordInfo(
+                                id = password.id,
+                                name = nomeState.value,
+                                login = usuarioState.value,
+                                password = senhaState.value,
+                                notes = notasState.value.ifEmpty { null }
+                            )
+                        )
+                        navigateBack()
+                    },
+                    modifier = Modifier
+                        .padding(bottom = 32.dp)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(25.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF4A460) // Cor laranja aproximada
+                    )
+                ) {
+                    Text("Salvar", color = Color.White, fontSize = 18.sp)
+                }
+            }
+        }
+    }
 }
-
 
 @Composable
 fun EditInput(
     textInputLabel: String,
-    textInputState: MutableState<String> = mutableStateOf(""),
+    textInputState: MutableState<String>,
     textInputHeight: Int = 60
 ) {
-    val padding: Int = 30
-
-    var textState by rememberSaveable { textInputState }
+    var textState by textInputState
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(textInputHeight.dp)
-            .padding(horizontal = padding.dp),
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.Center,
     ) {
         OutlinedTextField(
@@ -80,9 +135,7 @@ fun EditInput(
                 .height(textInputHeight.dp)
                 .fillMaxWidth()
         )
-
     }
-    Spacer(modifier = Modifier.height(10.dp))
 }
 
 @Preview(showBackground = true)
@@ -93,10 +146,4 @@ fun EditListPreview() {
         navigateBack = {},
         savePassword = {}
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun EditInputPreview() {
-    EditInput("Nome")
 }

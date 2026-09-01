@@ -1,20 +1,14 @@
 package com.example.plaintext.ui.screens.login
 
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -38,39 +32,156 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Devices
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.plaintext.R
+import com.example.plaintext.ui.theme.PlainTextTheme
+import com.example.plaintext.ui.viewmodel.LoginViewModel
 import com.example.plaintext.ui.viewmodel.PreferencesViewModel
-
-data class LoginState(
-    val preencher: Boolean,
-    val login: String,
-    val navigateToSettings: () -> Unit,
-    val navigateToList: (name: String) -> Unit,
-    val checkCredentials: (login: String, password: String) -> Boolean,
-)
 
 @Composable
 fun Login_screen(
     navigateToSettings: () -> Unit,
     navigateToList: () -> Unit,
-    viewModel: PreferencesViewModel = hiltViewModel()
+    loginViewModel: LoginViewModel = hiltViewModel(),
+    preferencesViewModel: PreferencesViewModel = hiltViewModel()
 ) {
+    val loginState = loginViewModel.state
+    val preferencesState = preferencesViewModel.state
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
+    // Efeito para preenchimento automático
+    LaunchedEffect(preferencesState.preencher) {
+        if (preferencesState.preencher && loginState.login.isEmpty()) {
+            loginViewModel.onLoginChanged(preferencesState.login)
+        }
+    }
+
+    Login_screen_content(
+        state = loginState,
+        onLoginChange = { loginViewModel.onLoginChanged(it) },
+        onPasswordChange = { loginViewModel.onPasswordChanged(it) },
+        onRememberMeChange = { loginViewModel.onRememberMeChanged(it) },
+        navigateToSettings = navigateToSettings,
+        navigateToList = {
+            scope.launch {
+                val isAdminValid = preferencesViewModel.checkCredentials(
+                    loginState.login,
+                    loginState.password
+                )
+                
+                if (isAdminValid) {
+                    navigateToList()
+                } else {
+                    val isUserValid = loginViewModel.validateInDatabase(
+                        loginState.login,
+                        loginState.password
+                    )
+                    if (isUserValid) {
+                        navigateToList()
+                    } else {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Login ou Senha incorretos!",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun Login_screen_content(
+    state: com.example.plaintext.ui.viewmodel.LoginViewState,
+    onLoginChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onRememberMeChange: (Boolean) -> Unit,
+    navigateToSettings: () -> Unit,
+    navigateToList: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopBarComponent(
+                navigateToSettings = navigateToSettings
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                    contentDescription = "Logo",
+                    modifier = Modifier.height(120.dp)
+                )
+                Text("PlainText", fontSize = 32.sp, style = MaterialTheme.typography.headlineLarge)
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+
+            OutlinedTextField(
+                value = state.login,
+                onValueChange = onLoginChange,
+                label = { Text("Login") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = state.password,
+                onValueChange = onPasswordChange,
+                label = { Text("Senha") },
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = state.rememberMe,
+                    onCheckedChange = onRememberMeChange
+                )
+                Text("Lembrar-me")
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = { navigateToList() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Enviar")
+            }
+        }
+    }
 }
 
 @Composable
@@ -80,7 +191,6 @@ fun MyAlertDialog(shouldShowDialog: MutableState<Boolean>) {
             onDismissRequest = {
                 shouldShowDialog.value = false
             },
-
             title = { Text(text = "Sobre") },
             text = { Text(text = "PlainText Password Manager v1.0") },
             confirmButton = {
@@ -97,8 +207,9 @@ fun MyAlertDialog(shouldShowDialog: MutableState<Boolean>) {
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun TopBarComponent(
-    navigateToSettings: (() -> Unit?)? = null,
-    navigateToSensores: (() -> Unit?)? = null,
+    title: String = "PlainText",
+    navigateToSettings: (() -> Unit)? = null,
+    navigateToSensores: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val shouldShowDialog = remember { mutableStateOf(false) }
@@ -108,9 +219,9 @@ fun TopBarComponent(
     }
 
     TopAppBar(
-        title = { Text("PlainText") },
+        title = { Text(title) },
         actions = {
-            if (navigateToSettings != null && navigateToSensores != null) {
+            if (navigateToSettings != null || navigateToSensores != null) {
                 IconButton(onClick = { expanded = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Menu")
                 }
@@ -118,26 +229,50 @@ fun TopBarComponent(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
+                    if (navigateToSettings != null) {
+                        DropdownMenuItem(
+                            text = { Text("Configurações") },
+                            onClick = {
+                                navigateToSettings()
+                                expanded = false
+                            }
+                        )
+                    }
+                    if (navigateToSensores != null) {
+                        DropdownMenuItem(
+                            text = { Text("Sensores") },
+                            onClick = {
+                                navigateToSensores()
+                                expanded = false
+                            }
+                        )
+                    }
                     DropdownMenuItem(
-                        text = { Text("Configurações") },
+                        text = { Text("Sobre") },
                         onClick = {
-                            navigateToSettings();
-                            expanded = false;
-                        },
-                        modifier = Modifier.padding(8.dp)
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text("Sobre");
-                        },
-                        onClick = {
-                            shouldShowDialog.value = true;
-                            expanded = false;
-                        },
-                        modifier = Modifier.padding(8.dp)
+                            shouldShowDialog.value = true
+                            expanded = false
+                        }
                     )
                 }
             }
         }
     )
 }
+
+@Preview(name = "Light Mode", showBackground = true, showSystemUi = true, device = Devices.PIXEL_7)
+@Preview(name = "Dark Mode", showBackground = true, showSystemUi = true, device = Devices.PIXEL_7, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun LoginPreview() {
+    PlainTextTheme {
+        Login_screen_content(
+            state = com.example.plaintext.ui.viewmodel.LoginViewState(),
+            onLoginChange = {},
+            onPasswordChange = {},
+            onRememberMeChange = {},
+            navigateToSettings = {},
+            navigateToList = {}
+        )
+    }
+}
+

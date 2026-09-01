@@ -3,41 +3,67 @@ package com.example.plaintext.ui.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.createSavedStateHandle
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.lifecycle.viewModelScope
+import com.example.plaintext.data.repository.AppSettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class PreferencesState(
-    var login: String,
-    var password: String,
-    var preencher: Boolean
+    val login: String = "devtitans",
+    val password: String = "123",
+    val preencher: Boolean = true
 )
 
 @HiltViewModel
 class PreferencesViewModel @Inject constructor(
-    handle: SavedStateHandle,
+    private val repository: AppSettingsRepository
 ) : ViewModel() {
-    var preferencesState by mutableStateOf(PreferencesState(login = "devtitans", password = "123", preencher = true))
+    var state by mutableStateOf(PreferencesState())
         private set
 
-    fun updateLogin(login: String) {
+    init {
+        viewModelScope.launch {
+            // Coletar valores iniciais e observar mudanças
+            repository.adminLogin.collect { login ->
+                state = state.copy(login = login)
+            }
+        }
+        viewModelScope.launch {
+            repository.adminPassword.collect { pass ->
+                state = state.copy(password = pass)
+            }
+        }
+        viewModelScope.launch {
+            repository.enableAutofill.collect { autofill ->
+                state = state.copy(preencher = autofill)
+            }
+        }
+    }
 
+    fun updateLogin(login: String) {
+        viewModelScope.launch {
+            repository.updateAdminLogin(login)
+        }
     }
 
     fun updatePassword(password: String) {
-
+        viewModelScope.launch {
+            repository.updateAdminPassword(password)
+        }
     }
 
     fun updatePreencher(preencher: Boolean) {
-
+        viewModelScope.launch {
+            repository.updateEnableAutofill(preencher)
+        }
     }
 
-    fun checkCredentials(login: String, password: String): Boolean{
-        return login == preferencesState.login && password == preferencesState.password
+    suspend fun checkCredentials(login: String, password: String): Boolean {
+        val currentLogin = repository.adminLogin.first()
+        val currentPass = repository.adminPassword.first()
+        return login == currentLogin && password == currentPass
     }
 }
